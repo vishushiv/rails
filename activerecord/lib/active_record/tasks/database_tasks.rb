@@ -171,21 +171,28 @@ module ActiveRecord
         class_for_adapter(configuration['adapter']).new(*arguments).structure_load(filename)
       end
 
-      def load_schema(format = ActiveRecord::Base.schema_format, file = nil)
+      def load_schema(configuration, format = ActiveRecord::Base.schema_format, file = nil)
         case format
         when :ruby
           file ||= File.join(db_dir, "schema.rb")
           check_schema_file(file)
-          purge(current_config)
+          purge(configuration)
+          ActiveRecord::Base.establish_connection(configuration)
           load(file)
         when :sql
           file ||= File.join(db_dir, "structure.sql")
           check_schema_file(file)
-          purge(current_config)
-          structure_load(current_config, file)
+          purge(configuration)
+          structure_load(configuration, file)
         else
           raise ArgumentError, "unknown format #{format.inspect}"
         end
+      end
+
+      def load_schema_current(format = ActiveRecord::Base.schema_format, file = nil, environment = env)
+        each_current_configuration(environment) { |configuration|
+          load_schema configuration, format, file
+        }
       end
 
       def check_schema_file(filename)
